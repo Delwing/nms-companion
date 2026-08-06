@@ -94,6 +94,27 @@ interface RegionCluster {
   region the stars spread naturally, so a 36-system voxel genuinely looks
   packed while a 1-system waypoint shows a lone point.
 
+## Two zoom levels
+
+The map opens on an **overview** and drills into a **lattice**:
+
+- **Overview** — every neighbourhood as a marker around the galactic core,
+  sized by system count, with distance rings every 200k ly, a spoke from the
+  core to each marker, and a drop line to the floor plane.
+- **Lattice** — one neighbourhood's regions as cubes (below). Clicking an
+  overview marker descends into it; the Overview entry in the rail returns.
+
+The overview needs **no compression**. Measured against a real catalogue the
+neighbourhoods sit at 705k–880k ly from the core with 1,550k ly between the
+two furthest, so they straddle the core rather than clustering on one side —
+true relative positions already fit a single view. The only liberty taken is
+marker *size*, which encodes system count and no physical extent. Rings are
+labelled so the scale is stated rather than implied.
+
+Guild colour stays out of the overview: a guild belongs to a region, and a
+neighbourhood generally spans several, so tinting a marker by any single
+guild would assert something the data does not support.
+
 ## The view: `src/renderer/src/components/galaxyMap/`
 
 Rendered with three.js via `@react-three/fiber`, chosen over a hand-rolled
@@ -104,7 +125,8 @@ identical either way, so the renderer choice is reversible.
 | File | Role |
 | --- | --- |
 | `GalaxyMapView.tsx` | The screen. The only file `App.tsx` imports. |
-| `Scene.tsx` | R3F `<Canvas>` contents |
+| `Scene.tsx` | Lattice scene: one neighbourhood's regions |
+| `OverviewScene.tsx` | Overview scene: all neighbourhoods round the core |
 | `RegionCubes.tsx` | Instanced region cubes + edge wireframes |
 | `SystemStars.tsx` | Instanced additive star sprites |
 | `CoreArrow.tsx` | Direction indicator + distance label |
