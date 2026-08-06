@@ -1,0 +1,7 @@
+.idea
+node_modules/
+out/
+dist/
+release/
+*.log
+tests/.build/

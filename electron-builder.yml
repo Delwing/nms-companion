@@ -1,0 +1,39 @@
+# Packaging config for `npm run dist:win` (and the build-windows workflow).
+appId: dev.wilczynski.nms-catalouge
+# Must stay equal to package.json "name": Electron derives the userData dir
+# (%APPDATA%\nms-catalouge — catalogue DBs, settings.json, nms-keymap.json)
+# from it, and dev + packaged builds must share that data.
+productName: nms-catalouge
+directories:
+  output: release
+
+# better-sqlite3 / sharp / onnxruntime-node / koffi all ship N-API prebuilds
+# that load in Electron as-is — rebuilding would only require a native
+# toolchain for nothing.
+npmRebuild: false
+
+files:
+  - out/**
+  - package.json
+
+# Native .node binaries and helper executables can't be loaded from inside
+# an asar archive; tesseract.js also spawns workers from real file paths.
+asarUnpack:
+  - "**/*.node"
+  - node_modules/@img/**
+  - node_modules/sharp/**
+  - node_modules/onnxruntime-node/**
+  - node_modules/koffi/**
+  - node_modules/screenshot-desktop/**
+  - node_modules/tesseract.js/**
+  - node_modules/tesseract.js-core/**
+
+win:
+  target:
+    - zip
+    - nsis
+
+nsis:
+  oneClick: false
+  allowToChangeInstallationDirectory: true
+  artifactName: ${name}-${version}-setup.${ext}

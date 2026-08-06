@@ -1,0 +1,51 @@
+{
+  "name": "nms-catalouge",
+  "version": "0.1.0",
+  "description": "No Man's Sky companion: save-file station cataloguer + OCR planet scanner",
+  "main": "out/main/index.js",
+  "author": "Piotr Wilczynski",
+  "license": "MIT",
+  "private": true,
+  "scripts": {
+    "dev": "electron-vite dev",
+    "build": "electron-vite build",
+    "start": "electron-vite preview",
+    "typecheck": "tsc --noEmit -p tsconfig.node.json && tsc --noEmit -p tsconfig.web.json",
+    "test": "tsc -p tests/tsconfig.json && node --test tests/*.test.js",
+    "rebuild": "electron-rebuild -f -w better-sqlite3",
+    "dist:win": "electron-vite build && electron-builder --win --publish never"
+  },
+  "dependencies": {
+    "@react-three/drei": "^10.7.8",
+    "@react-three/fiber": "^9.7.0",
+    "better-sqlite3": "^13.0.3",
+    "chokidar": "^5.0.0",
+    "koffi": "^3.1.4",
+    "lucide-react": "^1.29.0",
+    "onnxruntime-node": "^1.27.0",
+    "react": "^19.2.8",
+    "react-dom": "^19.2.8",
+    "screenshot-desktop": "^1.15.4",
+    "sharp": "^0.35.3",
+    "tesseract.js": "^7.0.0",
+    "three": "^0.185.1"
+  },
+  "devDependencies": {
+    "@electron/rebuild": "^4.2.0",
+    "electron-builder": "^26.0.12",
+    "@tailwindcss/vite": "^4.3.3",
+    "@types/better-sqlite3": "^9.6.0",
+    "@types/react": "^19.2.18",
+    "@types/react-dom": "^19.2.4",
+    "@types/three": "^0.185.4",
+    "@vitejs/plugin-react": "^5.2.0",
+    "electron": "^43.3.0",
+    "electron-vite": "^5.0.0",
+    "tailwindcss": "^4.3.3",
+    "typescript": "^7.0.2",
+    "vite": "^7.3.6"
+  },
+  "overrides": {
+    "adm-zip": "^0.6.0"
+  }
+}

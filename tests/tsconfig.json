@@ -1,0 +1,40 @@
+{
+  "compilerOptions": {
+    "module": "node16",
+    "esModuleInterop": true,
+    "target": "ES2022",
+    "moduleResolution": "node16",
+    "skipLibCheck": true,
+    "strict": true,
+    "outDir": ".build",
+    "rootDir": "../src",
+    "paths": {
+      "@shared/*": ["../src/shared/*"]
+    }
+  },
+  "include": [
+    "../src/main/modules.d.ts",
+    "../src/main/services/assistantNms.ts",
+    "../src/main/services/captureService.ts",
+    "../src/main/services/envoyParser.ts",
+    "../src/main/services/memoryReader.ts",
+    "../src/main/services/paddleOcr.ts",
+    "../src/main/services/planetParser.ts",
+    "../src/main/services/saveParser.ts",
+    "../src/main/services/saveSlots.ts",
+    "../src/main/services/summaryName.ts",
+    "../src/main/services/systemMatcher.ts",
+    "../src/shared/freighterBattle.ts",
+    "../src/shared/galaxy.ts",
+    "../src/shared/galaxyMap.ts",
+    "../src/shared/guildRanks.ts",
+    "../src/shared/itemInfo.ts",
+    "../src/shared/itemNames.ts",
+    "../src/shared/planetTypes.ts",
+    "../src/shared/regionGuilds.ts",
+    "../src/shared/resources.ts",
+    "../src/shared/systemStubs.ts",
+    "../src/shared/tradeEconomy.ts",
+    "../src/shared/types.ts"
+  ]
+}
