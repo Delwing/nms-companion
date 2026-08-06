@@ -6,9 +6,13 @@ Date: 2026-08-06
 ## Goal
 
 A 3D view of the catalogue's **region structure** — which voxels have been
-explored deeply, which guild owns each one, and where the unexplored gaps sit
-— with a not-to-scale indicator of the direction and distance to the galactic
-core.
+explored deeply and which guild owns each one — with a not-to-scale indicator
+of the direction and distance to the galactic core.
+
+Only catalogued regions are drawn. An earlier revision also outlined the
+un-catalogued neighbours as a "frontier", which was cut: every voxel in the
+galaxy holds systems, so those outlines marked nothing the player didn't
+already know and merely wrapped the real data in a shell of noise.
 
 The map is explicitly a self-contained, removable feature. It adds no store
 method, no schema column, no IPC channel and no preload surface, so binning it
@@ -36,7 +40,8 @@ Two conclusions drive the whole design:
    voxel extent is X -1344..1771, Y -80..2, Z -1981..1090 — a box of roughly
    785 million cells holding 42 filled ones. The view must work per-cluster.
 2. **A per-cluster lattice is very comfortable.** The home cluster is 34
-   filled cells in an 864-cell box, so gaps are both plentiful and legible.
+   filled cells in an 864-cell box — small enough to read as a shape and to
+   draw in a single pass.
 
 Clusters are flat by nature: voxel Y is 8-bit and the galaxy is a disc, so the
 slab shape (3 cells thick here) is permanent. Y is rendered at true scale;
@@ -65,7 +70,6 @@ interface RegionCell {
 interface RegionCluster {
   galaxy: string | null
   cells: RegionCell[]
-  frontier: Voxel[]                  // face-adjacent empty neighbours
   min: Voxel; max: Voxel; centroid: Voxel
   systemCount: number
   maxCellCount: number               // normaliser for density shading
@@ -84,11 +88,7 @@ interface RegionCluster {
   Radius 1/2/3 over the real catalogue yields 8/7/7 clusters, so the structure
   is insensitive to the parameter; 2 tolerates a one-voxel hop without merging
   distant outposts into the home cluster.
-- **`frontierOf(cluster)`** — empty voxels *face*-adjacent (6-neighbour, not
-  26) to a filled cell. For the home cluster this is roughly 120 cells rather
-  than the 830 empties a full bounding box would contain, which is what makes
-  gaps read as information instead of noise.
-- **`starPositionIn(cell, system)`** — a deterministic offset inside the cube,
+- **`starPositionIn(system)`** — a deterministic offset inside the cube,
   hashed from `solarSystemIndex`. This is not decorative randomness: the index
   is real data, stable across re-syncs, and with 550 possible values per
   region the stars spread naturally, so a 36-system voxel genuinely looks
@@ -105,7 +105,7 @@ identical either way, so the renderer choice is reversible.
 | --- | --- |
 | `GalaxyMapView.tsx` | The screen. The only file `App.tsx` imports. |
 | `Scene.tsx` | R3F `<Canvas>` contents |
-| `RegionCubes.tsx` | Instanced filled cubes + frontier wireframes |
+| `RegionCubes.tsx` | Instanced region cubes + edge wireframes |
 | `SystemStars.tsx` | Instanced additive star sprites |
 | `CoreArrow.tsx` | Direction indicator + distance label |
 | `RegionPanel.tsx` | Selected-region detail list |
@@ -117,9 +117,6 @@ identical either way, so the renderer choice is reversible.
   opacity scaled by `cellCount / maxCellCount` with a floor so single-system
   cells stay visible. The two 36-system voxels should read as the obvious
   centre of gravity.
-- **Frontier cube** — wireframe only, low opacity, no fill. "Explored" vs
-  "reachable but unknown" is therefore a texture difference, not a colour one,
-  leaving colour free for guild.
 - **Stars** — small additive sprites inside their cube at `starPositionIn`.
 - **Y=0 plane** — a faint reference grid. The cluster is a flat slab, so the
   eye needs a horizon to read its orientation.
@@ -152,9 +149,8 @@ colour with its existing icon to keep the mapping learnable.
 The canvas runs `frameloop="demand"`, rendering only on interaction rather
 than continuously. This companion app sits open *while the game is running*,
 and a 60fps idle WebGL loop would tax the same GPU as No Man's Sky. On-demand
-rendering makes the map cost nothing while untouched. With ~34 filled cubes,
-~120 frontier wireframes and ~163 star sprites — all instanced — the frames it
-does draw are trivial.
+rendering makes the map cost nothing while untouched. With ~34 cubes and ~163
+star sprites, the frames it does draw are trivial.
 
 ## Integration
 
@@ -198,8 +194,6 @@ to a stale or missing `.js` in `tests/.build`.
 - Clustering merges voxels 1 apart and keeps voxels 4 apart separate at radius 2.
 - Clustering **never merges across galaxies**, even at identical coordinates
   (`regionKey` includes galaxy, so this must hold).
-- Frontier of one isolated cell is exactly 6; of two face-adjacent cells is
-  10, not 12 — proving both dedup and exclusion of filled cells.
 - Core vector magnitude agrees with the existing `distanceToCoreLy`; direction
   is unit-length toward the origin.
 - `starPositionIn` is deterministic across calls and stays inside cube bounds.
