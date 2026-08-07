@@ -1,5 +1,5 @@
 {
-  "name": "nms-catalouge",
+  "name": "nms-companion",
   "version": "0.1.0",
   "description": "No Man's Sky companion: save-file station cataloguer + OCR planet scanner",
   "main": "out/main/index.js",

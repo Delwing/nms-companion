@@ -14,6 +14,7 @@ npm run build      # production bundles into out/
 npm run rebuild    # no longer needed: better-sqlite3 >=12 ships ABI-stable N-API prebuilds that load as-is in Electron
 npm run typecheck  # tsc over both projects (tsconfig.node.json = main/preload, tsconfig.web.json = renderer)
 npm test           # tsc -p tests/tsconfig.json (emits to tests/.build) then node --test tests/*.test.js
+npm run dist:win   # electron-builder: nsis installer + portable exe + zip into release/
 ```
 
 Run a single test file (after the tests build step):
@@ -35,7 +36,7 @@ Standard electron-vite three-process layout; both main and renderer alias `@shar
 
 ### Two data pipelines feed one store
 
-1. **Save watcher** (`saveWatcher.ts`): chokidar watches `%APPDATA%\HelloGames\NMS\` for `save*.hg` → read-only open → LZ4 decompress (`lz4.ts`, pure TS, no native deps) → `saveParser.ts` extracts teleporter endpoints, discovered systems, inventories, ships, language progress. Upserts are keyed by universal address; **user metadata (tags, notes, guild, toggles) must never be overwritten by a re-sync**. Obfuscated save keys are de-obfuscated via an optional user-supplied `%APPDATA%\nms-catalouge\nms-keymap.json`.
+1. **Save watcher** (`saveWatcher.ts`): chokidar watches `%APPDATA%\HelloGames\NMS\` for `save*.hg` → read-only open → LZ4 decompress (`lz4.ts`, pure TS, no native deps) → `saveParser.ts` extracts teleporter endpoints, discovered systems, inventories, ships, language progress. Upserts are keyed by universal address; **user metadata (tags, notes, guild, toggles) must never be overwritten by a re-sync**. Obfuscated save keys are de-obfuscated via an optional user-supplied `%APPDATA%\nms-companion\nms-keymap.json`.
 2. **OCR pipeline** (`ocrService.ts`): screenshot → `captureService.ts` proportional crop zones (16:9 and 21:9) → PP-OCR on onnxruntime (`paddleOcr.ts`) as primary engine, sharp-preprocess + tesseract.js as automatic fallback → text routed to `planetParser.ts` / `systemParser.ts` / `envoyParser.ts` (best-scoring zone wins). Both engines are created once and reused; the hotkey→DB-commit budget is 1.5 s. Every scan dumps intermediate images + raw text to a debug dir for tuning against real screenshots.
 
 ### Persistence
@@ -43,6 +44,12 @@ Standard electron-vite three-process layout; both main and renderer alias `@shar
 `db.ts` opens better-sqlite3 (WAL) in Electron's `userData` dir, with a transparent fallback to an atomic JSON file store when the native module isn't built. Any new store method must work in both backends.
 
 **One store per save slot.** `slotStores.ts` owns a `CatalogueStore` per character (`userData/slots/<encoded-slot-id>.db`); `saveWatcher` writes each save into *its own* slot's store, and main's module-level `store` (what every IPC handler reads) points at the pinned slot's store, or the newest-written slot's when unpinned. Anything resolving a slot to a store must go through `SlotStores`, never `openStore` directly.
+
+### Packaging
+
+`electron-builder.yml` ships three Windows targets (nsis / portable / zip) and takes its icon from `build/icon.ico`, regenerated from `build/icon.svg` by `node scripts/make-icon.mjs`. `productName: NMS Companion` is the display name (install dir, shortcut, `NMS Companion.exe`); the data dir is `%APPDATA%\nms-companion` — Electron derives it from package.json `name`, which electron-builder copies into the asar verbatim, so changing `name` moves everyone's catalogue.
+
+Both `BrowserWindow`s take `icon: windowIcon`, imported via electron-vite's `import … from '../../build/icon.png?asset'` (emitted to `out/main/chunks/`, typed by `src/main/modules.d.ts`). It's deliberately `undefined` when packaged — Windows then uses the icon embedded in the .exe rather than one inside app.asar.
 
 ### Conventions & invariants
 

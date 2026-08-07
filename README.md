@@ -1,3 +1,5 @@
+<img src="build/icon.png" alt="" width="80" />
+
 # NMS Companion & Planet Cataloguer
 
 A local Electron companion app for **No Man's Sky**. It watches your save files to catalogue systems, stations, ships and inventory, and OCR-scans the game screen (`Alt+C`) to record planet, system and guild-envoy data — all stored per character, fully offline. 100 % TypeScript.
@@ -53,13 +55,23 @@ A second frameless glass window floats over the game: last scan summary, current
 
 ## Getting it
 
-Grab a Windows build from the [GitHub Actions](../../actions/workflows/build-windows.yml) artifacts (or a tagged [release](../../releases)), or build locally:
+Grab a Windows build from the [GitHub Actions](../../actions/workflows/build-windows.yml) artifacts (or a tagged [release](../../releases)) — three flavours, all the same app:
+
+| Asset | What it is |
+| --- | --- |
+| `nms-companion-<version>-setup.exe` | Installer, with Start Menu shortcut and an uninstall entry |
+| `nms-companion-<version>-portable.exe` | Single file, no install. Unpacks to `%TEMP%\NMSCompanion` on first run (slow first launch, normal afterwards) |
+| `nms-companion-<version>-win.zip` | Unpacked folder — extract anywhere and run `NMS Companion.exe` |
+
+All three read and write the same catalogue in `%APPDATA%\nms-companion`, so you can switch between them freely.
+
+Or build locally:
 
 ```bash
 npm install
 npm run dev       # dev mode with HMR
 npm run build     # production bundles into out/
-npm run dist:win  # packaged Windows installer + zip into release/
+npm run dist:win  # installer + portable exe + zip into release/
 ```
 
 No native build step needed: better-sqlite3, sharp, onnxruntime and koffi all ship prebuilt binaries, with an automatic fallback to a JSON file store if SQLite can't load.
@@ -76,7 +88,7 @@ No native build step needed: better-sqlite3, sharp, onnxruntime and koffi all sh
 Recent NMS versions ship saves with obfuscated JSON keys. Drop a mapping file (obfuscated → readable key, e.g. exported from libMBIN / NMS Save Editor) at:
 
 ```
-%APPDATA%\nms-catalouge\nms-keymap.json
+%APPDATA%\nms-companion\nms-keymap.json
 ```
 
 and the parser de-obfuscates the tree before extraction. Plain-key saves work out of the box.

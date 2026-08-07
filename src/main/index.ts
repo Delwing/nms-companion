@@ -12,6 +12,16 @@ import { locateSaveDirs, SaveWatcher } from './services/saveWatcher'
 import { scanScreen, shutdownOcr, warmUp, type ScanOptions } from './services/ocrService'
 import { matchBaseInText, matchSystemInText } from './services/systemMatcher'
 import { focusWindowByTitle } from './services/gameFocus'
+import appIcon from '../../build/icon.png?asset'
+
+/**
+ * Windows draws the taskbar / Alt-Tab icon from the window, falling back to the
+ * .exe's embedded icon. Packaged builds already carry it in `NMS Companion.exe`,
+ * so this only matters in `npm run dev`, where the window would otherwise show
+ * the stock Electron logo. Left unset when packaged: the emitted asset lives
+ * inside app.asar, and the exe's icon is the more reliable source.
+ */
+const windowIcon = app.isPackaged ? undefined : appIcon
 
 let dashboardWindow: BrowserWindow | null = null
 let hudWindow: BrowserWindow | null = null
@@ -90,6 +100,7 @@ function createDashboardWindow(): void {
     width: 1200,
     height: 800,
     ...(savedBounds('dashboardBounds') ?? {}),
+    icon: windowIcon,
     show: false,
     frame: false,
     transparent: true,
@@ -121,6 +132,7 @@ function createHudWindow(): void {
     width: 420,
     height: 320,
     ...(savedBounds('hudBounds') ?? {}),
+    icon: windowIcon,
     show: false,
     frame: false,
     transparent: true,

@@ -1,3 +1,9 @@
+/** electron-vite's asset plugin: emits the file into out/ and yields its path. */
+declare module '*?asset' {
+  const path: string
+  export default path
+}
+
 declare module 'screenshot-desktop' {
   interface ScreenshotOptions {
     format?: string

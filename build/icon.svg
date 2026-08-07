@@ -1,0 +1,56 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512">
+  <defs>
+    <linearGradient id="space" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#16223f"/>
+      <stop offset="1" stop-color="#070c17"/>
+    </linearGradient>
+    <linearGradient id="planet" x1="0.15" y1="0.05" x2="0.85" y2="0.95">
+      <stop offset="0" stop-color="#ffd784"/>
+      <stop offset="0.45" stop-color="#f7a13c"/>
+      <stop offset="1" stop-color="#cf4527"/>
+    </linearGradient>
+    <linearGradient id="ring" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#9fe8f5"/>
+      <stop offset="1" stop-color="#3a84d4"/>
+    </linearGradient>
+    <radialGradient id="shade" cx="0.32" cy="0.26" r="0.86">
+      <stop offset="0.4" stop-color="#060b16" stop-opacity="0"/>
+      <stop offset="1" stop-color="#060b16" stop-opacity="0.6"/>
+    </radialGradient>
+    <clipPath id="globe">
+      <circle cx="238" cy="246" r="134"/>
+    </clipPath>
+    <!-- keeps only the near (front) half of the ring, in the ring's own tilt -->
+    <clipPath id="nearRing">
+      <rect x="-420" y="266" width="1360" height="900" transform="rotate(-24 256 266)"/>
+    </clipPath>
+  </defs>
+
+  <!-- deep-space plate -->
+  <rect width="512" height="512" rx="112" fill="url(#space)"/>
+
+  <!-- stars -->
+  <circle cx="92" cy="112" r="9" fill="#e8f4ff" opacity="0.95"/>
+  <circle cx="412" cy="126" r="6" fill="#e8f4ff" opacity="0.7"/>
+  <circle cx="420" cy="398" r="8" fill="#e8f4ff" opacity="0.5"/>
+
+  <!-- ring: far half (behind the planet) -->
+  <ellipse cx="256" cy="266" rx="198" ry="72" fill="none" stroke="url(#ring)"
+           stroke-width="24" transform="rotate(-24 256 266)"/>
+
+  <!-- planet -->
+  <circle cx="238" cy="246" r="134" fill="url(#planet)"/>
+  <g clip-path="url(#globe)">
+    <ellipse cx="194" cy="184" rx="98" ry="30" fill="#fff3d6" opacity="0.3"/>
+    <ellipse cx="272" cy="296" rx="122" ry="26" fill="#8a2f1c" opacity="0.28"/>
+    <ellipse cx="228" cy="350" rx="82" ry="20" fill="#8a2f1c" opacity="0.24"/>
+  </g>
+  <!-- terminator / limb darkening -->
+  <circle cx="238" cy="246" r="134" fill="url(#shade)"/>
+
+  <!-- ring: near half (in front of the planet) -->
+  <g clip-path="url(#nearRing)">
+    <ellipse cx="256" cy="266" rx="198" ry="72" fill="none" stroke="url(#ring)"
+             stroke-width="24" transform="rotate(-24 256 266)"/>
+  </g>
+</svg>

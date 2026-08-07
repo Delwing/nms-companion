@@ -36,13 +36,14 @@ jobs:
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: nms-catalouge-windows
+          name: nms-companion-windows
           path: |
             release/*.zip
             release/*-setup.exe
+            release/*-portable.exe
           if-no-files-found: error
 
-      - name: Create release with installer
+      - name: Create release with installer and portable build
         if: startsWith(github.ref, 'refs/tags/v')
         uses: softprops/action-gh-release@v2
         with:
@@ -50,3 +51,4 @@ jobs:
           files: |
             release/*.zip
             release/*-setup.exe
+            release/*-portable.exe

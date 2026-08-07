@@ -1,9 +1,10 @@
 # Packaging config for `npm run dist:win` (and the build-windows workflow).
-appId: dev.wilczynski.nms-catalouge
-# Must stay equal to package.json "name": Electron derives the userData dir
-# (%APPDATA%\nms-catalouge — catalogue DBs, settings.json, nms-keymap.json)
-# from it, and dev + packaged builds must share that data.
-productName: nms-catalouge
+appId: dev.wilczynski.nms-companion
+# Display name: install dir, Start Menu entry, Add/Remove Programs and the .exe.
+# It does *not* decide where data lives — Electron derives the userData dir
+# (%APPDATA%\nms-companion — catalogue DBs, settings.json, nms-keymap.json)
+# from package.json "name", which every target and dev mode share.
+productName: NMS Companion
 directories:
   output: release
 
@@ -29,11 +30,24 @@ asarUnpack:
   - node_modules/tesseract.js-core/**
 
 win:
+  icon: build/icon.ico
   target:
-    - zip
-    - nsis
+    - target: nsis # installer
+    - target: portable # single self-extracting .exe
+    - target: zip # unpacked folder, no extraction step
 
 nsis:
   oneClick: false
   allowToChangeInstallationDirectory: true
+  shortcutName: NMS Companion
+  uninstallDisplayName: NMS Companion ${version}
   artifactName: ${name}-${version}-setup.${ext}
+
+portable:
+  artifactName: ${name}-${version}-portable.${ext}
+  # Fixed name so the ~300 MB payload is extracted to %TEMP% once and reused on
+  # later launches; the default is a fresh random dir per run.
+  unpackDirName: NMSCompanion
+
+# ${name}, not the default ${productName}, which would put spaces in file names.
+artifactName: ${name}-${version}-${os}.${ext}
