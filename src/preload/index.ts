@@ -13,6 +13,7 @@ import type {
   OcrScanResult,
   OcrStatus,
   PlanetRecord,
+  PlatformSupport,
   SaveSlotState,
   SaveSyncResult,
   ShipRecord,
@@ -62,8 +63,13 @@ const api = {
   setGuildStanding: (guild: Exclude<GuildType, null>, rank: string): Promise<GuildStanding> =>
     ipcRenderer.invoke('guilds:setStanding', guild, rank),
   scanNow: (): Promise<void> => ipcRenderer.invoke('ocr:scan'),
-  appInfo: (): Promise<{ backend: string; clickThrough: boolean; version: string }> =>
-    ipcRenderer.invoke('app:info'),
+  appInfo: (): Promise<{
+    backend: string
+    clickThrough: boolean
+    version: string
+    /** Which overlay/scanning features this OS supports. */
+    platform: PlatformSupport
+  }> => ipcRenderer.invoke('app:info'),
   minimize: (): Promise<void> => ipcRenderer.invoke('window:minimize'),
   /** Toggle work-area "maximize"; resolves to the new maximized state. */
   toggleMaximize: (): Promise<boolean> => ipcRenderer.invoke('window:maximize'),

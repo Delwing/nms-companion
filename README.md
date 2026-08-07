@@ -10,7 +10,7 @@ A local Electron companion app for **No Man's Sky**. It watches your save files 
 
 ### Data comes in three ways
 
-- **Save watcher** — watches `%APPDATA%\HelloGames\NMS\` (Steam `st_*` and GOG `DefaultUser` profiles) for `save*.hg` writes. Saves are opened strictly read-only, LZ4-decompressed in pure TypeScript and parsed: discovered systems, teleporter endpoints, bases, every inventory, ships, frigates, language progress and discovery credit are upserted into the catalogue keyed by universal address. Your own metadata (tags, notes, guild, toggles) is never overwritten by a re-sync.
+- **Save watcher** — watches `%APPDATA%\HelloGames\NMS\` (Steam `st_*` and GOG `DefaultUser` profiles; Game Pass and Proton layouts too) for `save*.hg` writes. Saves are opened strictly read-only, LZ4-decompressed in pure TypeScript and parsed: discovered systems, teleporter endpoints, bases, every inventory, ships, frigates, language progress and discovery credit are upserted into the catalogue keyed by universal address. Your own metadata (tags, notes, guild, toggles) is never overwritten by a re-sync.
 - **OCR screen scanner** (`Alt+C`) — screenshots the game, crops proportional UI zones (16:9 and 21:9 layouts) and reads them with PP-OCR on onnxruntime (models downloaded on first use), falling back automatically to sharp-preprocessed tesseract.js. One hotkey press recognises whichever screen you're on:
   - **Analysis Visor / Discovery panel** → planet type, weather, sentinels, flora, fauna, resources
   - **System information panel** → race, economy, conflict level, matched onto the catalogued system
@@ -65,14 +65,19 @@ Grab a Windows build from the [GitHub Actions](../../actions/workflows/build-win
 
 All three read and write the same catalogue in `%APPDATA%\nms-companion`, so you can switch between them freely.
 
+There are also Linux builds (`AppImage`, `.deb`, `.tar.gz`) from the [Linux workflow](../../actions/workflows/build-linux.yml) — see [Linux](#linux) for what does and doesn't work there.
+
 Or build locally:
 
 ```bash
 npm install
-npm run dev       # dev mode with HMR
-npm run build     # production bundles into out/
-npm run dist:win  # installer + portable exe + zip into release/
+npm run dev         # dev mode with HMR
+npm run build       # production bundles into out/
+npm run dist:win    # installer + portable exe + zip into release/
+npm run dist:linux  # AppImage + deb + tar.gz into release/
 ```
+
+Each target has to be packaged on the OS it targets — the bundled native modules are platform-specific prebuilds.
 
 No native build step needed: better-sqlite3, sharp, onnxruntime and koffi all ship prebuilt binaries, with an automatic fallback to a JSON file store if SQLite can't load.
 
@@ -92,6 +97,35 @@ Recent NMS versions ship saves with obfuscated JSON keys. Drop a mapping file (o
 ```
 
 and the parser de-obfuscates the tree before extraction. Plain-key saves work out of the box.
+
+## Linux
+
+The save catalogue works. The overlay mostly doesn't — the app says which parts, in a banner, on first launch.
+
+NMS runs under Proton, so its saves sit inside the compatibility prefix, and the app looks for them in every Steam library it can find (`~/.steam`, `~/.local/share/Steam`, the flatpak dir, plus any extra library from `libraryfolders.vdf`):
+
+```
+<library>/steamapps/compatdata/275850/pfx/drive_c/users/steamuser/
+  AppData/Roaming/HelloGames/NMS/st_*/save*.hg
+```
+
+Everything below the prefix is identical to a Windows install, down to the slot ids — the same character produces the same catalogue on either OS. For a non-Steam prefix (Heroic, Lutris, a hand-rolled `WINEPREFIX`), point the app at the save folder yourself in `~/.config/nms-companion/config.json`:
+
+```json
+{ "saveDirs": ["/games/prefixes/nms/drive_c/users/steamuser/AppData/Roaming/HelloGames/NMS"] }
+```
+
+| Feature | Status |
+| --- | --- |
+| Save watcher, catalogue, inventory, maps | Works |
+| `Alt+C` screen scan | X11 only. Wayland allows capture only through a portal, so it prompts or fails |
+| `Alt+C` / `Alt+S` hotkeys | X11 only — Wayland grants no global hotkey grab. The Scan button always works |
+| HUD overlay | X11 only, and how well it floats over a fullscreen game is up to the window manager |
+| `Alt+S` focus bounce | Not available — it hands the foreground over through a Win32 call with no portable equivalent |
+| Pull names from game | Not available — reads the game's memory through a Windows API |
+| PP-OCR speed | Slower: DirectML is Windows-only, so scans run on the CPU |
+
+The `.AppImage` needs `libfuse2` on distros that no longer ship it (`apt install libfuse2t64`), or run it with `--appimage-extract-and-run`.
 
 ## Development
 

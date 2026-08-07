@@ -8,7 +8,9 @@ import { SlotStores } from './services/slotStores'
 import { newestSlotOnDisk } from './services/saveSlots'
 import { harvestDiscoveryNames } from './services/memoryReader'
 import { createAssistantNms, type AssistantNmsService } from './services/assistantNms'
-import { locateSaveDirs, SaveWatcher } from './services/saveWatcher'
+import { locateSaveDirs } from './services/saveLocations'
+import { SaveWatcher } from './services/saveWatcher'
+import { platformSupport } from './services/platform'
 import { scanScreen, shutdownOcr, warmUp, type ScanOptions } from './services/ocrService'
 import { matchBaseInText, matchSystemInText } from './services/systemMatcher'
 import { focusWindowByTitle } from './services/gameFocus'
@@ -290,10 +292,17 @@ async function runScan(): Promise<void> {
     send('ocr:result', payload)
     send('ocr:status', { state: 'done' })
   } catch (err) {
+    // A capture failure on a platform that can't reliably screenshot is a
+    // platform limit, not a bug in the scan — name it, so the user isn't left
+    // debugging a native error message that has no fix.
+    const reason = err instanceof Error ? err.message : String(err)
+    const support = platformSupport()
     const payload: OcrScanResult = {
       ok: false,
       durationMs: Date.now() - started,
-      error: err instanceof Error ? err.message : String(err)
+      error: support.screenCapture
+        ? reason
+        : `Screen capture is not available on ${support.session ?? support.os} — ${reason}`
     }
     send('ocr:result', payload)
     send('ocr:status', { state: 'error', message: payload.error })
@@ -364,6 +373,22 @@ function gameWindowTitle(): string {
   return "No Man's Sky"
 }
 
+/**
+ * Extra save locations from config.json ("saveDirs"). The escape hatch for
+ * installs the platform defaults can't find — chiefly a non-Steam Wine/Proton
+ * prefix on Linux (Heroic, Lutris, a manual WINEPREFIX).
+ */
+function configSaveDirs(): string[] {
+  const configPath = join(app.getPath('userData'), 'config.json')
+  try {
+    const dirs = JSON.parse(readFileSync(configPath, 'utf8')).saveDirs
+    if (Array.isArray(dirs)) return dirs.filter((d): d is string => typeof d === 'string')
+  } catch {
+    // missing or malformed config — platform defaults only
+  }
+  return []
+}
+
 /** UI zoom from config.json ("uiZoom"); the compact HUD styling reads small at native scale. */
 function uiZoom(): number {
   const configPath = join(app.getPath('userData'), 'config.json')
@@ -405,7 +430,7 @@ function overlayExcludeRects(display?: number | string): ScanOptions['excludeRec
   return rects
 }
 
-/** Optional userData/config.json: { "display": id, "zones": [{key,left,top,width,height}], "ocrEngine": "paddle" | "tesseract", "uiZoom": 1.15, "gameWindowTitle": "No Man's Sky" } */
+/** Optional userData/config.json: { "display": id, "zones": [{key,left,top,width,height}], "ocrEngine": "paddle" | "tesseract", "uiZoom": 1.15, "gameWindowTitle": "No Man's Sky", "saveDirs": ["/path/to/prefix/.../HelloGames/NMS"] } */
 function scanOptions(): ScanOptions {
   const opts: ScanOptions = { debugDir: debugDir(), paddleDir: paddleDir() }
   const configPath = join(app.getPath('userData'), 'config.json')
@@ -514,7 +539,8 @@ function registerIpc(): void {
   ipcMain.handle('app:info', () => ({
     backend: store.backend,
     clickThrough,
-    version: app.getVersion()
+    version: app.getVersion(),
+    platform: platformSupport()
   }))
   // Last-copied portal address, pinned so the HUD (over the game) and the
   // window title keep showing it while the player dials the portal.
@@ -596,7 +622,7 @@ app.whenReady().then(() => {
   // Which slot is being played right now (or was last played): the one whose
   // save file was written most recently. A legacy shared catalogue migrates
   // into that slot's store once.
-  const newestSlot = newestSlotOnDisk(locateSaveDirs())
+  const newestSlot = newestSlotOnDisk(locateSaveDirs(configSaveDirs()))
   if (newestSlot) slotStores.migrateLegacy(newestSlot)
   updateActiveStore(loadSettings().saveSlot ?? newestSlot)
   assistantNms = createAssistantNms({ cacheDir: join(app.getPath('userData'), 'assistantnms') })
@@ -614,6 +640,7 @@ app.whenReady().then(() => {
     storeFor: (slotId) => slotStores.storeFor(slotId),
     keyMapping: loadKeyMapping(),
     selectedSlot: loadSettings().saveSlot ?? null,
+    extraSaveDirs: configSaveDirs(),
     onSync: (result) => {
       console.log(
         `[saveWatcher] synced ${result.systemsUpserted} systems, ${result.basesUpserted} bases, ${result.inventoryItems} inventory stacks from ${result.savePath}` +
@@ -632,8 +659,20 @@ app.whenReady().then(() => {
   const dirs = saveWatcher.start()
   console.log('[saveWatcher] watching:', dirs.length ? dirs : 'no dirs found')
 
-  globalShortcut.register('Alt+C', () => void runScan())
-  globalShortcut.register('Alt+S', toggleFocus)
+  // Registration fails silently where the display server grants no global
+  // grab (Wayland) — say so once rather than leaving the hotkeys dead.
+  const hotkeys: [string, () => void][] = [
+    ['Alt+C', () => void runScan()],
+    ['Alt+S', toggleFocus]
+  ]
+  for (const [accelerator, handler] of hotkeys) {
+    if (!globalShortcut.register(accelerator, handler)) {
+      console.warn(`[hotkeys] ${accelerator} could not be registered on this platform`)
+    }
+  }
+  for (const limitation of platformSupport().limitations) {
+    console.warn('[platform]', limitation)
+  }
 
   app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) createDashboardWindow()

@@ -15,6 +15,7 @@ npm run rebuild    # no longer needed: better-sqlite3 >=12 ships ABI-stable N-AP
 npm run typecheck  # tsc over both projects (tsconfig.node.json = main/preload, tsconfig.web.json = renderer)
 npm test           # tsc -p tests/tsconfig.json (emits to tests/.build) then node --test tests/*.test.js
 npm run dist:win   # electron-builder: nsis installer + portable exe + zip into release/
+npm run dist:linux # electron-builder: AppImage + deb + tar.gz into release/ (must run on Linux)
 ```
 
 Run a single test file (after the tests build step):
@@ -36,7 +37,7 @@ Standard electron-vite three-process layout; both main and renderer alias `@shar
 
 ### Two data pipelines feed one store
 
-1. **Save watcher** (`saveWatcher.ts`): chokidar watches `%APPDATA%\HelloGames\NMS\` for `save*.hg` → read-only open → LZ4 decompress (`lz4.ts`, pure TS, no native deps) → `saveParser.ts` extracts teleporter endpoints, discovered systems, inventories, ships, language progress. Upserts are keyed by universal address; **user metadata (tags, notes, guild, toggles) must never be overwritten by a re-sync**. Obfuscated save keys are de-obfuscated via an optional user-supplied `%APPDATA%\nms-companion\nms-keymap.json`.
+1. **Save watcher** (`saveWatcher.ts`): chokidar watches the dirs `saveLocations.ts` resolves for `save*.hg` → read-only open → LZ4 decompress (`lz4.ts`, pure TS, no native deps) → `saveParser.ts` extracts teleporter endpoints, discovered systems, inventories, ships, language progress. Upserts are keyed by universal address; **user metadata (tags, notes, guild, toggles) must never be overwritten by a re-sync**. Obfuscated save keys are de-obfuscated via an optional user-supplied `%APPDATA%\nms-companion\nms-keymap.json`.
 2. **OCR pipeline** (`ocrService.ts`): screenshot → `captureService.ts` proportional crop zones (16:9 and 21:9) → PP-OCR on onnxruntime (`paddleOcr.ts`) as primary engine, sharp-preprocess + tesseract.js as automatic fallback → text routed to `planetParser.ts` / `systemParser.ts` / `envoyParser.ts` (best-scoring zone wins). Both engines are created once and reused; the hotkey→DB-commit budget is 1.5 s. Every scan dumps intermediate images + raw text to a debug dir for tuning against real screenshots.
 
 ### Persistence
@@ -50,6 +51,14 @@ Standard electron-vite three-process layout; both main and renderer alias `@shar
 `electron-builder.yml` ships three Windows targets (nsis / portable / zip) and takes its icon from `build/icon.ico`, regenerated from `build/icon.svg` by `node scripts/make-icon.mjs`. `productName: NMS Companion` is the display name (install dir, shortcut, `NMS Companion.exe`); the data dir is `%APPDATA%\nms-companion` — Electron derives it from package.json `name`, which electron-builder copies into the asar verbatim, so changing `name` moves everyone's catalogue.
 
 Both `BrowserWindow`s take `icon: windowIcon`, imported via electron-vite's `import … from '../../build/icon.png?asset'` (emitted to `out/main/chunks/`, typed by `src/main/modules.d.ts`). It's deliberately `undefined` when packaged — Windows then uses the icon embedded in the .exe rather than one inside app.asar.
+
+### Platforms
+
+Windows is the only platform with full function. The save half is portable; the overlay half is Win32-shaped.
+
+- **`saveLocations.ts`** owns every save path. Windows gets Steam/GOG `%APPDATA%` plus the Game Pass `Packages` tree; elsewhere the game runs under Proton, so it walks each Steam library's `steamapps/compatdata/275850/pfx/…/AppData/Roaming/HelloGames/NMS`. Below the prefix the layout is byte-identical to Windows, so `slotIdentity` yields the same ids and a character keeps one catalogue across both. `config.json` `"saveDirs"` is the escape hatch for non-Steam prefixes.
+- **`platform.ts`** resolves which of screen capture / global hotkeys / game focus / memory scan the host can do, plus a user-facing sentence per gap. It reaches the renderer through `app:info` and surfaces as `PlatformNotice`. Gate a new Win32-only feature here rather than letting it fail natively; `focusWindowByTitle` and `harvestDiscoveryNames` already return `false` / `unsupported-platform` off Windows.
+- Wayland is the sharp edge: no global hotkey grab, and capture only via a portal. X11 behaves close to Windows apart from focus and memory reads.
 
 ### Conventions & invariants
 

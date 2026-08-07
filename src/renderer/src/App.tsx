@@ -11,6 +11,7 @@ import type {
   OcrScanResult,
   OcrStatus,
   PlanetRecord,
+  PlatformSupport,
   SaveSlotState,
   SaveSyncResult,
   ShipRecord,
@@ -35,6 +36,7 @@ import { ENVOY_STOCK_ROWS } from '@shared/guildRanks'
 import { closestToCoreByGalaxy, formatLightYears, portalCode } from '@shared/galaxy'
 import { isBareUnknownSystem } from '@shared/systemStubs'
 import { OverlayHeader } from './components/OverlayHeader'
+import { PlatformNotice } from './components/PlatformNotice'
 import { StationGrid } from './components/StationGrid'
 import { GuildStandingStrip } from './components/GuildStandingStrip'
 import { PlanetList } from './components/PlanetList'
@@ -77,6 +79,8 @@ export default function App(): React.JSX.Element {
   const [battle, setBattle] = useState<FreighterBattleState | null>(null)
   const [slotState, setSlotState] = useState<SaveSlotState>({ slots: [], selected: null })
   const [saveError, setSaveError] = useState<string | null>(null)
+  /** Which overlay/scanning features this OS supports; null until main answers. */
+  const [platform, setPlatform] = useState<PlatformSupport | null>(null)
   const [filter, setFilter] = useState('')
   const [groupByRegion, setGroupByRegion] = useState(false)
   const [selectedResources, setSelectedResources] = useState<string[]>([])
@@ -113,6 +117,7 @@ export default function App(): React.JSX.Element {
     void window.api.getFreighterBattle().then(setBattle)
     void window.api.listSlots().then(setSlotState)
     void window.api.getPinnedPortal().then(setPinnedPortal)
+    void window.api.appInfo().then((info) => setPlatform(info.platform))
     if (!isHudWindow) void window.api.isHudVisible().then(setHudVisible)
 
     const offResult = window.api.onOcrResult((result) => {
@@ -386,7 +391,10 @@ export default function App(): React.JSX.Element {
         onUnpin={unpinPortal}
         onScan={() => void window.api.scanNow()}
         onSelectSlot={(id) => void selectSlot(id)}
+        platform={platform}
       />
+
+      <PlatformNotice platform={platform} />
 
       {/* View switcher: catalogue vs base/resource coverage matrix. */}
       <div className="flex items-center gap-1 border-b border-slate-700/50 bg-slate-900/40 px-5">
@@ -488,7 +496,9 @@ export default function App(): React.JSX.Element {
                 {res} <X className="h-2.5 w-2.5" />
               </button>
             ))}
-            {unknownCount > 0 && (
+            {/* The harvest reads process memory through a Windows API, so the
+                button is hidden rather than offered-then-refused elsewhere. */}
+            {unknownCount > 0 && (platform?.memoryScan ?? true) && (
               <button
                 onClick={() => void pullNamesFromGame()}
                 disabled={harvest.busy}

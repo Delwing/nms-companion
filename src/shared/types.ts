@@ -256,6 +256,28 @@ export interface OcrStatus {
   message?: string
 }
 
+/**
+ * What the host OS can support of the overlay/scanning half of the app. The
+ * save catalogue works everywhere; these are the Win32-shaped features, and
+ * the flags let the UI say so instead of failing obscurely. See
+ * `src/main/services/platform.ts`.
+ */
+export interface PlatformSupport {
+  os: NodeJS.Platform
+  /** Linux display server ('wayland' | 'x11'); null on other platforms. */
+  session: string | null
+  /** Screenshotting the game for OCR. */
+  screenCapture: boolean
+  /** Alt+C / Alt+S firing while the game holds focus. */
+  globalHotkeys: boolean
+  /** Alt+S handing the foreground back to the game. */
+  gameFocus: boolean
+  /** Reading procedural names out of the running game. */
+  memoryScan: boolean
+  /** One user-facing sentence per unsupported or degraded feature. */
+  limitations: string[]
+}
+
 /** One save slot (character) discovered on disk; auto+manual saves collapse into one slot. */
 export interface SaveSlotInfo {
   /** Stable identity: profile dir + slot pair, e.g. "st_123/Slot2". */

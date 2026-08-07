@@ -20,6 +20,7 @@
     "../src/main/services/memoryReader.ts",
     "../src/main/services/paddleOcr.ts",
     "../src/main/services/planetParser.ts",
+    "../src/main/services/saveLocations.ts",
     "../src/main/services/saveParser.ts",
     "../src/main/services/saveSlots.ts",
     "../src/main/services/summaryName.ts",

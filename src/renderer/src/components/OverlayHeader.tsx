@@ -12,7 +12,13 @@ import {
   ScanLine,
   X
 } from 'lucide-react'
-import type { LocationInfo, OcrStatus, SaveSlotState, SaveSyncResult } from '@shared/types'
+import type {
+  LocationInfo,
+  OcrStatus,
+  PlatformSupport,
+  SaveSlotState,
+  SaveSyncResult
+} from '@shared/types'
 import { PortalGlyphStrip } from './PortalGlyphStrip'
 
 interface OverlayHeaderProps {
@@ -25,6 +31,8 @@ interface OverlayHeaderProps {
   pinnedPortal: string | null
   slotState: SaveSlotState
   saveError: string | null
+  /** Host OS feature support; null until main answers. Assume full support. */
+  platform: PlatformSupport | null
   onToggleHud: () => void
   onScan: () => void
   onSelectSlot: (slotId: string | null) => void
@@ -69,12 +77,16 @@ export function OverlayHeader({
   pinnedPortal,
   slotState,
   saveError,
+  platform,
   onToggleHud,
   onScan,
   onSelectSlot,
   onUnpin
 }: OverlayHeaderProps): React.JSX.Element {
   const [maximized, setMaximized] = useState(false)
+  // Unknown support (null) is treated as full — the flags only ever downgrade.
+  const canCapture = platform?.screenCapture ?? true
+  const hasHotkeys = platform?.globalHotkeys ?? true
 
   return (
     <header className="drag-region flex items-center gap-3 border-b border-cyan-500/20 bg-slate-900/80 px-4 py-2.5">
@@ -156,15 +168,27 @@ export function OverlayHeader({
 
       <button
         onClick={onScan}
-        title="Scan screen now (Alt+C)"
-        className="no-drag flex items-center gap-1.5 rounded-lg border border-cyan-500/40 bg-cyan-500/15 px-3 py-1.5 text-xs font-semibold text-cyan-200 transition-colors hover:bg-cyan-500/30"
+        title={
+          canCapture
+            ? `Scan screen now${hasHotkeys ? ' (Alt+C)' : ''}`
+            : `Screen capture is not available on ${platform?.session ?? platform?.os} — scanning will likely fail`
+        }
+        className={`no-drag flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-xs font-semibold transition-colors ${
+          canCapture
+            ? 'border-cyan-500/40 bg-cyan-500/15 text-cyan-200 hover:bg-cyan-500/30'
+            : 'border-amber-500/40 bg-amber-500/10 text-amber-300/80 hover:bg-amber-500/20'
+        }`}
       >
         <ScanLine className="h-3.5 w-3.5" /> Scan
       </button>
 
       <button
         onClick={onToggleHud}
-        title="Show/hide the in-game glass HUD overlay (Alt+S jumps between game and dashboard)"
+        title={
+          hasHotkeys
+            ? 'Show/hide the in-game glass HUD overlay (Alt+S jumps between game and dashboard)'
+            : 'Show/hide the in-game glass HUD overlay'
+        }
         className={`no-drag flex items-center gap-1 rounded-lg border border-slate-600/60 px-2.5 py-1.5 text-xs transition-colors ${
           hudVisible ? 'bg-cyan-500/25 text-cyan-200' : 'text-slate-400 hover:text-slate-200'
         }`}

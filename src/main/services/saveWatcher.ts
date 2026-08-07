@@ -1,11 +1,11 @@
 /**
- * Watches %APPDATA%\HelloGames\NMS\ (Steam `st_*` / GOG `DefaultUser`
- * profile folders) for save.hg changes and syncs systems into the store.
+ * Watches the game's save directories (see `saveLocations.ts` for where those
+ * are per platform) for save.hg changes and syncs systems into the store.
  * Save files are only ever read — never written.
  */
 import { watch, type FSWatcher } from 'chokidar'
-import { existsSync, readdirSync, readFileSync, statSync } from 'fs'
-import { basename, dirname, join } from 'path'
+import { readFileSync, statSync } from 'fs'
+import { basename, dirname } from 'path'
 import type {
   FreighterBattleState,
   FrigateRecord,
@@ -29,6 +29,7 @@ import {
   loadSaveJson,
   type CurrentLocation
 } from './saveParser'
+import { locateSaveDirs, noSaveDirMessage } from './saveLocations'
 import { slotIdentity } from './saveSlots'
 import { SummaryNameTracker } from './summaryName'
 import { relinkPlanetsByHint } from './systemMatcher'
@@ -69,45 +70,6 @@ function isGamePassSave(normalizedPath: string): boolean {
   return /\/xgs\/[^/]+\/Slot\d+(Auto|Manual)\/data$/i.test(normalizedPath)
 }
 
-function safeSubdirs(dir: string, predicate: (name: string) => boolean): string[] {
-  try {
-    return readdirSync(dir, { withFileTypes: true })
-      .filter((e) => e.isDirectory() && predicate(e.name))
-      .map((e) => join(dir, e.name))
-  } catch {
-    return []
-  }
-}
-
-/**
- * Save locations across platforms:
- * - Steam/GOG: %APPDATA%\HelloGames\NMS\{st_*, DefaultUser}\save*.hg
- * - Xbox Game Pass: %LOCALAPPDATA%\Packages\HelloGames.NoMansSky_*\
- *   SystemAppData\xgs\<user>\Slot<N>{Auto,Manual}\data (same .hg format)
- */
-export function locateSaveDirs(): string[] {
-  const dirs: string[] = []
-
-  const appData = process.env.APPDATA
-  if (appData) {
-    const nmsRoot = join(appData, 'HelloGames', 'NMS')
-    if (existsSync(nmsRoot)) {
-      dirs.push(...safeSubdirs(nmsRoot, (n) => n.startsWith('st_') || n === 'DefaultUser'))
-    }
-  }
-
-  const localAppData = process.env.LOCALAPPDATA
-  if (localAppData) {
-    const packages = join(localAppData, 'Packages')
-    for (const pkg of safeSubdirs(packages, (n) => n.startsWith('HelloGames.NoMansSky'))) {
-      const xgs = join(pkg, 'SystemAppData', 'xgs')
-      dirs.push(...safeSubdirs(xgs, () => true))
-    }
-  }
-
-  return dirs
-}
-
 export interface SaveWatcherOptions {
   /** Store to sync a given slot's save data into (per-slot catalogues). */
   storeFor: (slotId: string | null) => CatalogueStore
@@ -115,6 +77,8 @@ export interface SaveWatcherOptions {
   keyMapping?: Record<string, string>
   /** Pinned slot id restored from settings; null/undefined = newest save wins. */
   selectedSlot?: string | null
+  /** Extra save locations from config.json, searched alongside the defaults. */
+  extraSaveDirs?: string[]
   onSync: (result: SaveSyncResult) => void
   /**
    * Only for the one problem the user can act on: no save directory found
@@ -250,9 +214,9 @@ export class SaveWatcher {
   }
 
   start(): string[] {
-    const dirs = locateSaveDirs()
+    const dirs = locateSaveDirs(this.opts.extraSaveDirs)
     if (dirs.length === 0) {
-      this.opts.onError('No NMS save directory found under %APPDATA%\\HelloGames\\NMS')
+      this.opts.onError(noSaveDirMessage())
       return []
     }
 

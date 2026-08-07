@@ -1,4 +1,7 @@
-# Packaging config for `npm run dist:win` (and the build-windows workflow).
+# Packaging config for `npm run dist:win` / `dist:linux` (and the build workflows).
+#
+# Each target must be built on its own OS: `files` ships the prebuilt native
+# modules from the local node_modules, and those are platform-specific.
 appId: dev.wilczynski.nms-companion
 # Display name: install dir, Start Menu entry, Add/Remove Programs and the .exe.
 # It does *not* decide where data lives — Electron derives the userData dir
@@ -35,6 +38,21 @@ win:
     - target: nsis # installer
     - target: portable # single self-extracting .exe
     - target: zip # unpacked folder, no extraction step
+
+# NMS itself only runs under Proton here, so the save catalogue is the point:
+# the OCR overlay depends on Win32 desktop behaviour that Wayland in particular
+# doesn't offer (see src/main/services/platform.ts, which tells the user which).
+linux:
+  icon: build/icon.png
+  category: Game
+  synopsis: No Man's Sky save cataloguer and screen scanner
+  # The deb target requires an email-bearing maintainer; package.json's `author`
+  # has no address, and electron-builder refuses to guess one.
+  maintainer: Piotr Wilczynski <delwing@gmail.com>
+  target:
+    - target: AppImage
+    - target: deb
+    - target: tar.gz
 
 nsis:
   oneClick: false
